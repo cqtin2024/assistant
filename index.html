@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Setup Assistant V4</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f3f4f6; color: #111; padding: 20px; }
+  .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 20px auto; max-width: 700px; }
+  .step { margin-top: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+  label { font-weight: 600; display: block; margin-top: 8px; }
+  input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px; }
+  button { background: #1d4ed8; color: white; border: none; padding: 10px 20px; border-radius: 6px; margin-top: 15px; cursor: pointer; }
+  button:hover { background: #2563eb; }
+  .status { margin-top: 20px; background: #f1f5f9; padding: 12px; border-radius: 6px; font-size: 14px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <h1>🤖 Smart Setup Assistant V4</h1>
+  <p>Thiết lập tự động dự án (GitHub + Firebase + Vercel)</p>
+
+  <div class="card">
+    <div class="step">
+      <h2>1️⃣ GitHub</h2>
+      <label>Personal Access Token</label>
+      <input type="password" id="ghToken" placeholder="ghp_..." />
+      <label>Tên repository</label>
+      <input type="text" id="ghRepo" placeholder="username/repo" />
+      <button id="btnTestGitHub">Kiểm tra GitHub</button>
+    </div>
+
+    <div class="step">
+      <h2>2️⃣ Firebase</h2>
+      <label>Realtime Database URL</label>
+      <input type="url" id="fbUrl" placeholder="https://xxx-default-rtdb.firebaseio.com/" />
+      <label>Firebase Config (JSON)</label>
+      <textarea id="fbConfig" rows="4" placeholder='{"apiKey":"...","authDomain":"..."}'></textarea>
+      <button id="btnTestFirebase">Kiểm tra Firebase</button>
+    </div>
+
+    <div class="step">
+      <h2>3️⃣ Vercel</h2>
+      <label>Vercel Token</label>
+      <input type="password" id="vcToken" placeholder="vercel_xxxxx" />
+      <button id="btnDeploy">Deploy và cấu hình</button>
+    </div>
+
+    <div class="status" id="logBox">🟢 Sẵn sàng bắt đầu thiết lập...</div>
+  </div>
+
+  <script>
+    const logBox = document.getElementById('logBox');
+    const log = (msg, color = '#000') => {
+      logBox.innerHTML += `\n<span style="color:${color}">${msg}</span>`;
+      logBox.scrollTop = logBox.scrollHeight;
+    };
+
+    document.getElementById('btnTestGitHub').onclick = async () => {
+      const token = document.getElementById('ghToken').value.trim();
+      const repo = document.getElementById('ghRepo').value.trim();
+      if (!token || !repo) return log('❌ Thiếu GitHub token hoặc repo.', 'red');
+
+      log('🔍 Đang kiểm tra GitHub...');
+      const res = await fetch('/api/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'test_github', token, repo })
+      });
+      log(await res.text(), res.ok ? 'green' : 'red');
+    };
+
+    document.getElementById('btnTestFirebase').onclick = async () => {
+      const fbUrl = document.getElementById('fbUrl').value.trim();
+      if (!fbUrl) return log('❌ Thiếu URL Firebase.', 'red');
+
+      log('🔍 Đang kiểm tra Firebase...');
+      try {
+        const test = await fetch(fbUrl + '/assistant_test.json', {
+          method: 'PUT',
+          body: JSON.stringify({ ok: true })
+        });
+        if (test.ok) log('✅ Firebase hoạt động!', 'green');
+        else throw new Error('Firebase từ chối ghi.');
+      } catch (err) {
+        log('❌ Firebase lỗi: ' + err.message, 'red');
+      }
+    };
+
+    document.getElementById('btnDeploy').onclick = async () => {
+      const data = {
+        action: 'deploy',
+        ghToken: document.getElementById('ghToken').value,
+        ghRepo: document.getElementById('ghRepo').value,
+        fbUrl: document.getElementById('fbUrl').value,
+        fbConfig: document.getElementById('fbConfig').value,
+        vcToken: document.getElementById('vcToken').value
+      };
+      log('🚀 Đang gửi yêu cầu deploy...');
+      const res = await fetch('/api/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const txt = await res.text();
+      log(txt, res.ok ? 'green' : 'red');
+    };
+  </script>
+</body>
+</html>
